@@ -333,8 +333,8 @@ TEST(MultipleEncodingSameBuffer, Integers)
     int64_t h = -2340978324, h1;
     uint8_t buffer[sizeof(a) + sizeof(b) + sizeof(c) + sizeof(d) + sizeof(e) + sizeof(f) + sizeof(g) + sizeof(h)];
 
-    encode_le(buffer, a, b, c, d, e, f, g, h);
-    decode_le(buffer, a1, b1, c1, d1, e1, f1, g1, h1);
+    ASSERT_EQ(encode_le(buffer, a, b, c, d, e, f, g, h), 30);
+    ASSERT_EQ(decode_le(buffer, a1, b1, c1, d1, e1, f1, g1, h1), 30);
     ASSERT_EQ(a, a1);
     ASSERT_EQ(b, b1);
     ASSERT_EQ(c, c1);
@@ -344,8 +344,8 @@ TEST(MultipleEncodingSameBuffer, Integers)
     ASSERT_EQ(g, g1);
     ASSERT_EQ(h, h1);
 
-    encode_be(buffer, a, b, c, d, e, f, g, h);
-    decode_be(buffer, a1, b1, c1, d1, e1, f1, g1, h1);
+    ASSERT_EQ(encode_be(buffer, a, b, c, d, e, f, g, h), 30);
+    ASSERT_EQ(decode_be(buffer, a1, b1, c1, d1, e1, f1, g1, h1), 30);
     ASSERT_EQ(a, a1);
     ASSERT_EQ(b, b1);
     ASSERT_EQ(c, c1);

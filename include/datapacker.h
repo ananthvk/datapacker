@@ -51,11 +51,12 @@ template <unsigned bits, unsigned expbits> long double unpack754(uint64_t i);
  * @return Number of bytes written to the buffer
  * @note `buffer` should have size atleast equal to `sizeof(float)`
  */
-void encode_float(uint8_t *buffer, float f)
+int encode_float(uint8_t *buffer, float f)
 {
     uint64_t encoded = internal::pack754<32, 8>(f);
     uint32_t result = static_cast<uint32_t>(encoded & 0xFFFFFFFF);
     memcpy(buffer, &result, sizeof(result));
+    return sizeof(float);
 }
 
 /**
@@ -65,10 +66,11 @@ void encode_float(uint8_t *buffer, float f)
  * @return Number of bytes written to the buffer
  * @note `buffer` should have size atleast equal to `sizeof(double)`
  */
-void encode_double(uint8_t *buffer, double f)
+int encode_double(uint8_t *buffer, double f)
 {
     uint64_t encoded = internal::pack754<64, 11>(f);
     memcpy(buffer, &encoded, sizeof(encoded));
+    return sizeof(double);
 }
 
 /**
@@ -78,11 +80,12 @@ void encode_double(uint8_t *buffer, double f)
  * @return Number of bytes read from the buffer
  * @note `buffer` should have size atleast equal to `sizeof(float)`
  */
-void decode_float(uint8_t *buffer, float &f)
+int decode_float(uint8_t *buffer, float &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(float));
     f = static_cast<float>(internal::unpack754<32, 8>(i));
+    return sizeof(float);
 }
 
 /**
@@ -92,11 +95,12 @@ void decode_float(uint8_t *buffer, float &f)
  * @return Number of bytes read from the buffer
  * @note `buffer` should have size atleast equal to `sizeof(double)`
  */
-void decode_double(uint8_t *buffer, double &f)
+int decode_double(uint8_t *buffer, double &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(double));
     f = static_cast<double>(internal::unpack754<64, 11>(i));
+    return sizeof(double);
 }
 
 /**
@@ -114,7 +118,7 @@ void decode_double(uint8_t *buffer, double &f)
  * encode_be(buffer, x);
  * @endcode
  */
-template <typename T> inline void encode_be(uint8_t *buffer, T value)
+template <typename T> inline int encode_be(uint8_t *buffer, T value)
 {
     static_assert(std::is_integral<T>::value);
     static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
@@ -135,6 +139,7 @@ template <typename T> inline void encode_be(uint8_t *buffer, T value)
         buffer[6] = static_cast<uint8_t>((value >> (8 * sizeof(T) - 56)) & 0xFF);
         buffer[7] = static_cast<uint8_t>((value >> (8 * sizeof(T) - 64)) & 0xFF);
     }
+    return sizeof(T);
 }
 
 /**
@@ -152,7 +157,7 @@ template <typename T> inline void encode_be(uint8_t *buffer, T value)
  * encode_le(buffer, x);
  * @endcode
  */
-template <typename T> inline void encode_le(uint8_t *buffer, T value)
+template <typename T> inline int encode_le(uint8_t *buffer, T value)
 {
     static_assert(std::is_integral<T>::value);
     static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
@@ -173,6 +178,7 @@ template <typename T> inline void encode_le(uint8_t *buffer, T value)
         buffer[6] = static_cast<uint8_t>((value >> 48) & 0xFF);
         buffer[7] = static_cast<uint8_t>((value >> 56) & 0xFF);
     }
+    return sizeof(T);
 }
 
 /**
@@ -192,7 +198,7 @@ template <typename T> inline void encode_le(uint8_t *buffer, T value)
  * decode_le(buffer, x);
  * @endcode
  */
-template <typename T> inline void decode_le(uint8_t *buffer, T &value)
+template <typename T> inline int decode_le(uint8_t *buffer, T &value)
 {
     static_assert(std::is_integral<T>::value);
     static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
@@ -218,6 +224,7 @@ template <typename T> inline void decode_le(uint8_t *buffer, T &value)
         val |= static_cast<uT>(static_cast<uT>(buffer[7]) << 56);
     }
     value = static_cast<T>(val);
+    return sizeof(T);
 }
 
 /**
@@ -237,7 +244,7 @@ template <typename T> inline void decode_le(uint8_t *buffer, T &value)
  * decode_be(buffer, x);
  * @endcode
  */
-template <typename T> inline void decode_be(uint8_t *buffer, T &value)
+template <typename T> inline int decode_be(uint8_t *buffer, T &value)
 {
     static_assert(std::is_integral<T>::value);
     static_assert(sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
@@ -274,6 +281,7 @@ template <typename T> inline void decode_be(uint8_t *buffer, T &value)
         val |= static_cast<uT>(buffer[7]);
     }
     value = static_cast<T>(val);
+    return sizeof(T);
 }
 
 /**
@@ -287,10 +295,10 @@ template <typename T> inline void decode_be(uint8_t *buffer, T &value)
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> void encode_le(uint8_t *buffer, T value, Args... args)
+template <typename T, typename... Args> int encode_le(uint8_t *buffer, T value, Args... args)
 {
-    encode_le(buffer, value);
-    encode_le(buffer + sizeof(T), args...);
+    auto nbytes = encode_le(buffer, value);
+    return nbytes + encode_le(buffer + sizeof(T), args...);
 }
 
 /**
@@ -304,10 +312,10 @@ template <typename T, typename... Args> void encode_le(uint8_t *buffer, T value,
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> void encode_be(uint8_t *buffer, T value, Args... args)
+template <typename T, typename... Args> int encode_be(uint8_t *buffer, T value, Args... args)
 {
-    encode_be(buffer, value);
-    encode_be(buffer + sizeof(T), args...);
+    auto nbytes = encode_be(buffer, value);
+    return nbytes + encode_be(buffer + sizeof(T), args...);
 }
 
 /**
@@ -322,10 +330,10 @@ template <typename T, typename... Args> void encode_be(uint8_t *buffer, T value,
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> void decode_le(uint8_t *buffer, T &value, Args &...args)
+template <typename T, typename... Args> int decode_le(uint8_t *buffer, T &value, Args &...args)
 {
-    decode_le(buffer, value);
-    decode_le(buffer + sizeof(T), args...);
+    auto nbytes = decode_le(buffer, value);
+    return nbytes + decode_le(buffer + sizeof(T), args...);
 }
 
 /**
@@ -341,10 +349,10 @@ template <typename T, typename... Args> void decode_le(uint8_t *buffer, T &value
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> void decode_be(uint8_t *buffer, T &value, Args &...args)
+template <typename T, typename... Args> int decode_be(uint8_t *buffer, T &value, Args &...args)
 {
-    decode_be(buffer, value);
-    decode_be(buffer + sizeof(T), args...);
+    auto nbytes = decode_be(buffer, value);
+    return nbytes + decode_be(buffer + sizeof(T), args...);
 }
 
 namespace internal
