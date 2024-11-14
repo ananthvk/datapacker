@@ -1,5 +1,6 @@
 #include "serialization.h"
 #include <gtest/gtest.h>
+#include <vector>
 
 TEST(EncodingOfIntegers, SingleByte)
 {
@@ -133,27 +134,27 @@ TEST(DecodingOfIntegers, SingleByte)
 
     encode_le(buffer, a);
     decode_le(buffer, a1);
-    
+
     encode_le(buffer, b);
     decode_le(buffer, b1);
-    
+
     EXPECT_EQ(a, a1);
     EXPECT_EQ(b, b1);
 
-    for(int8_t i = INT8_MIN; i < INT8_MAX; ++i)
+    for (int8_t i = INT8_MIN; i < INT8_MAX; ++i)
     {
         encode_le(buffer, i);
         decode_le(buffer, a1);
         ASSERT_EQ(i, a1);
     }
-    
-    for(uint8_t i = 0; i < UINT8_MAX; ++i)
+
+    for (uint8_t i = 0; i < UINT8_MAX; ++i)
     {
         encode_le(buffer, i);
         decode_le(buffer, b1);
         ASSERT_EQ(i, b1);
     }
-    
+
     a = INT8_MAX;
     b = UINT8_MAX;
     encode_le(buffer, a);
@@ -169,12 +170,12 @@ TEST(DecodingOfIntegers, TwoBytes)
     int16_t a = -0x7fac, a1;
     uint16_t b = 0x6e5b, b1;
     uint8_t buffer[16] = {0};
-    
+
     encode_le(buffer, a);
     decode_le(buffer, a1);
     encode_be(buffer, b);
     decode_be(buffer, b1);
-    
+
     ASSERT_EQ(a, a1);
     ASSERT_EQ(b, b1);
 }
@@ -189,7 +190,7 @@ TEST(DecodingOfIntegers, FourBytes)
     decode_le(buffer, a1);
     encode_be(buffer, b);
     decode_be(buffer, b1);
-    
+
     ASSERT_EQ(a, a1);
     ASSERT_EQ(b, b1);
 }
@@ -204,9 +205,56 @@ TEST(DecodingOfIntegers, EightBytes)
     decode_le(buffer, a1);
     encode_be(buffer, b);
     decode_be(buffer, b1);
-    
+
     ASSERT_EQ(a, a1);
     ASSERT_EQ(b, b1);
+}
+
+// clang-format off
+#define BOUNDARYTEST(dtype, bits)                                \
+{                                                                \
+    std::vector<dtype> ints;                                     \
+    for(int i = 0; i < 32; ++i)                                  \
+    {                                                            \
+        ints.push_back(static_cast<dtype>(INT##bits##_MIN + i)); \
+        ints.push_back(static_cast<dtype>(INT##bits##_MAX - i)); \
+        ints.push_back(static_cast<dtype>(i));                   \
+    }                                                            \
+    constexpr int arr_size = bits / 8;                           \
+    uint8_t buffer[arr_size] = {0};                              \
+    for (const auto &i : ints) {                                 \
+    dtype x;                                                     \
+    encode_le(buffer, i);                                        \
+    decode_le(buffer, x);                                        \
+    ASSERT_EQ(i, x);                                             \
+    encode_be(buffer, i);                                        \
+    decode_be(buffer, x);                                        \
+    ASSERT_EQ(i, x);                                             \
+    }                                                            \
+    for (int i = 0; i <= 8; i++) {                               \
+    u##dtype u = static_cast<u##dtype>(i), u1;                   \
+    encode_le(buffer, u);                                        \
+    decode_le(buffer, u1);                                       \
+    ASSERT_EQ(u, u1);                                            \
+    encode_be(buffer, u);                                        \
+    decode_be(buffer, u1);                                       \
+    ASSERT_EQ(u, u1);                                            \
+    u = static_cast<u##dtype>(UINT##bits##_MAX - i);             \
+    encode_le(buffer, u);                                        \
+    decode_le(buffer, u1);                                       \
+    ASSERT_EQ(u, u1);                                            \
+    encode_be(buffer, u);                                        \
+    decode_be(buffer, u1);                                       \
+    ASSERT_EQ(u, u1);                                            \
+    }                                                            \
+}
+// clang-format on
+
+TEST(BoundaryTests, Ints) {
+     BOUNDARYTEST(int8_t, 8);
+     BOUNDARYTEST(int16_t, 16);
+     BOUNDARYTEST(int32_t, 32);
+     BOUNDARYTEST(int64_t, 64);
 }
 
 int main(int argc, char *argv[])
