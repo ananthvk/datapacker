@@ -1,3 +1,16 @@
+/**
+ * @file datapacker.h
+ * @brief Utilities for encoding/decoding different data types in various binary formats
+ *
+ * This file contains various template functions which can be used to encode/decode data types in a
+ * portable way. Contains functions to encode/decode little-endian/big-endian, floats (using IEEE754
+ * format), strings and arrays.
+ * @note
+ * - Ensure that buffer has enough length to store all the values to prevent buffer overflows
+ * @version 1.0
+ * @date 2024-11-14
+ * @author Ananthanarayanan Venkitakrishnan
+ */
 #ifndef A_DATAPACKER_H
 #define A_DATAPACKER_H
 #include <inttypes.h>
@@ -31,6 +44,13 @@ template <unsigned bits, unsigned expbits> uint64_t pack754(long double f);
 template <unsigned bits, unsigned expbits> long double unpack754(uint64_t i);
 } // namespace internal
 
+/**
+ * @brief Encodes a float in IEEE754 format and stores it in `buffer`
+ * @param buffer Pointer to buffer which will be used to store the encoded data
+ * @param value Value to be encoded
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(float)`
+ */
 void encode_float(uint8_t *buffer, float f)
 {
     uint64_t encoded = internal::pack754<32, 8>(f);
@@ -38,12 +58,26 @@ void encode_float(uint8_t *buffer, float f)
     memcpy(buffer, &result, sizeof(result));
 }
 
+/**
+ * @brief Encodes a double in IEEE754 format and stores it in `buffer`
+ * @param buffer Pointer to buffer which will be used to store the encoded data
+ * @param value Value to be encoded
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(double)`
+ */
 void encode_double(uint8_t *buffer, double f)
 {
     uint64_t encoded = internal::pack754<64, 11>(f);
     memcpy(buffer, &encoded, sizeof(encoded));
 }
 
+/**
+ * @brief Decodes a float stored in IEEE754 format and stores it in `f`
+ * @param buffer Pointer to buffer which contains the encoded data
+ * @param value Where the decoded value will be stored
+ * @return Number of bytes read from the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(float)`
+ */
 void decode_float(uint8_t *buffer, float &f)
 {
     uint64_t i;
@@ -51,6 +85,13 @@ void decode_float(uint8_t *buffer, float &f)
     f = static_cast<float>(internal::unpack754<32, 8>(i));
 }
 
+/**
+ * @brief Decodes a double stored in IEEE754 format and stores it in `f`
+ * @param buffer Pointer to buffer which contains the encoded data
+ * @param value Where the decoded value will be stored
+ * @return Number of bytes read from the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(double)`
+ */
 void decode_double(uint8_t *buffer, double &f)
 {
     uint64_t i;
@@ -58,6 +99,21 @@ void decode_double(uint8_t *buffer, double &f)
     f = static_cast<double>(internal::unpack754<64, 11>(i));
 }
 
+/**
+ * @brief Encodes a value in big-endian format and stores it in `buffer`
+ * @tparam T Type of value to be encoded, `sizeof(T)` bytes are written to the buffer
+ * @param buffer Pointer to buffer which will be used to store the encoded data
+ * @param value Value to be encoded
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(T)`
+ *
+ * Example usage:
+ * @code
+ * uint8_t buffer[4];
+ * int x = 32;
+ * encode_be(buffer, x);
+ * @endcode
+ */
 template <typename T> inline void encode_be(uint8_t *buffer, T value)
 {
     static_assert(std::is_integral<T>::value);
@@ -81,6 +137,21 @@ template <typename T> inline void encode_be(uint8_t *buffer, T value)
     }
 }
 
+/**
+ * @brief Encodes a value in little-endian format and stores it in `buffer`
+ * @tparam T Type of value to be encoded, `sizeof(T)` bytes are written to the buffer
+ * @param buffer Pointer to buffer which will be used to store the encoded data
+ * @param value Value to be encoded
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(T)`
+ *
+ * Example usage:
+ * @code
+ * uint8_t buffer[4];
+ * int x = 32;
+ * encode_le(buffer, x);
+ * @endcode
+ */
 template <typename T> inline void encode_le(uint8_t *buffer, T value)
 {
     static_assert(std::is_integral<T>::value);
@@ -104,6 +175,23 @@ template <typename T> inline void encode_le(uint8_t *buffer, T value)
     }
 }
 
+/**
+ * @brief Decodes a little-endian encoded value from the buffer and stores it in `value`, the number
+ * of bytes processed depends upon the type `T` of value passed
+ * @tparam T Type of value to be decoded, `sizeof(T)` bytes are read from the buffer
+ * @param buffer Pointer to buffer which contains the encoded data
+ * @param value Reference to a variable of type `T`, which will hold the decoded value
+ * @return Number of bytes read from the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(T)`
+ *
+ * Example usage:
+ * @code
+ * // Assume buffer has a little endian encoded value
+ * uint8_t buffer[4];
+ * int x;
+ * decode_le(buffer, x);
+ * @endcode
+ */
 template <typename T> inline void decode_le(uint8_t *buffer, T &value)
 {
     static_assert(std::is_integral<T>::value);
@@ -132,6 +220,23 @@ template <typename T> inline void decode_le(uint8_t *buffer, T &value)
     value = static_cast<T>(val);
 }
 
+/**
+ * @brief Decodes a big-endian encoded value from the buffer and stores it in `value`, the number of
+ * bytes processed depends upon the type `T` of value passed
+ * @tparam T Type of value to be decoded, `sizeof(T)` bytes are read from the buffer
+ * @param buffer Pointer to buffer which contains the encoded data
+ * @param value Reference to a variable of type `T`, which will hold the decoded value
+ * @return Number of bytes read from the buffer
+ * @note `buffer` should have size atleast equal to `sizeof(T)`
+ *
+ * Example usage:
+ * @code
+ * // Assume buffer has a big endian encoded value
+ * uint8_t buffer[4];
+ * int x;
+ * decode_be(buffer, x);
+ * @endcode
+ */
 template <typename T> inline void decode_be(uint8_t *buffer, T &value)
 {
     static_assert(std::is_integral<T>::value);
@@ -171,35 +276,84 @@ template <typename T> inline void decode_be(uint8_t *buffer, T &value)
     value = static_cast<T>(val);
 }
 
+/**
+ * @brief Encodes multiple values in little-endian format and then stores them in a buffer
+ * @tparam T Type of the first parameter to encode
+ * @tparam Args Type of additional values to pack into the buffer
+ * @param buffer Pointer to the buffer where the encoded values will be written to
+ * @param value The first value to encode
+ * @param Args Additional values to pack
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
+ * equal to the sum of sizes of the types passed
+ */
 template <typename T, typename... Args> void encode_le(uint8_t *buffer, T value, Args... args)
 {
     encode_le(buffer, value);
     encode_le(buffer + sizeof(T), args...);
 }
 
+/**
+ * @brief Encodes multiple values in big-endian format and then stores them in a buffer
+ * @tparam T Type of the first parameter to encode
+ * @tparam Args Type of additional values to pack into the buffer
+ * @param buffer Pointer to the buffer where the encoded values will be written to
+ * @param value The first value to encode
+ * @param Args Additional values to pack
+ * @return Number of bytes written to the buffer
+ * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
+ * equal to the sum of sizes of the types passed
+ */
 template <typename T, typename... Args> void encode_be(uint8_t *buffer, T value, Args... args)
 {
     encode_be(buffer, value);
     encode_be(buffer + sizeof(T), args...);
 }
 
+/**
+ * @brief Decodes multiple values in little-endian format and stores the decoded value in the passed
+ * references
+ * @tparam T Type of the first parameter to decode
+ * @tparam Args Type of additional values to unpack from the buffer
+ * @param buffer Pointer to the buffer where the encoded values are present
+ * @param value The first value to decode
+ * @param Args Additional values to unpack
+ * @return Number of bytes processed from the buffer
+ * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
+ * equal to the sum of sizes of the types passed
+ */
 template <typename T, typename... Args> void decode_le(uint8_t *buffer, T &value, Args &...args)
 {
     decode_le(buffer, value);
     decode_le(buffer + sizeof(T), args...);
 }
 
+/**
+ * @brief Decodes multiple values in big-endian format and stores the decoded value in the passed
+ * references
+ * @tparam T Type of the first parameter to decode
+ * @tparam Args Type of additional values to unpack from the buffer
+ * @param buffer Pointer to the buffer where the encoded values are present
+ * @param value The first value to decode
+ * @param Args Additional values to unpack, each value will be decoded from the appropriate offset
+ * in the buffer
+ * @return Number of bytes processed from the buffer
+ * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
+ * equal to the sum of sizes of the types passed
+ */
 template <typename T, typename... Args> void decode_be(uint8_t *buffer, T &value, Args &...args)
 {
     decode_be(buffer, value);
     decode_be(buffer + sizeof(T), args...);
 }
 
-// Code taken from https://beej.us/guide/bgnet/source/examples/ieee754.c
-
-
 namespace internal
 {
+// Code taken from https://beej.us/guide/bgnet/source/examples/ieee754.c
+
+/**
+ * This function packs a double as an unsigned 64 bit integer, which can be written to a buffer
+ */
 template <unsigned bits, unsigned expbits> inline uint64_t pack754(long double f)
 {
     long double fnorm;
@@ -248,6 +402,9 @@ template <unsigned bits, unsigned expbits> inline uint64_t pack754(long double f
                                  significand);
 }
 
+/**
+ * This function unpacks a unsigned 64 bit integer into a double
+ */
 template <unsigned bits, unsigned expbits> inline long double unpack754(uint64_t i)
 {
     long double result;
