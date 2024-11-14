@@ -1,12 +1,12 @@
-#ifndef A_SERIALIZATION_H
-#define A_SERIALIZATION_H
+#ifndef A_DATAPACKER_H
+#define A_DATAPACKER_H
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include <type_traits>
 
-namespace serialization
+namespace datapacker
 {
 namespace internal
 {
@@ -283,5 +283,5 @@ template <unsigned bits, unsigned expbits> inline long double unpack754(uint64_t
     return result;
 }
 } // namespace internal
-} // namespace serialization
-#endif // A_SERIALIZATION_H
+} // namespace datapacker
+#endif // A_DATAPACKER_H

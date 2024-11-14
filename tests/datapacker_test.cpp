@@ -1,9 +1,9 @@
-#include "serialization.h"
+#include "datapacker.h"
 #include <gtest/gtest.h>
 #include <math.h>
 #include <vector>
 
-using namespace serialization;
+using namespace datapacker;
 
 TEST(EncodingOfIntegers, SingleByte)
 {
