@@ -1,5 +1,6 @@
 #include "serialization.h"
 #include <gtest/gtest.h>
+#include <math.h>
 #include <vector>
 
 TEST(EncodingOfIntegers, SingleByte)
@@ -250,11 +251,72 @@ TEST(DecodingOfIntegers, EightBytes)
 }
 // clang-format on
 
-TEST(BoundaryTests, Ints) {
-     BOUNDARYTEST(int8_t, 8);
-     BOUNDARYTEST(int16_t, 16);
-     BOUNDARYTEST(int32_t, 32);
-     BOUNDARYTEST(int64_t, 64);
+TEST(BoundaryTests, Ints)
+{
+    BOUNDARYTEST(int8_t, 8);
+    BOUNDARYTEST(int16_t, 16);
+    BOUNDARYTEST(int32_t, 32);
+    BOUNDARYTEST(int64_t, 64);
+}
+
+TEST(RealNumberTests, FloatPackingAndUnpacking)
+{
+    std::vector<float> floats = {FLT_MIN,
+                                 FLT_MIN + 1,
+                                 FLT_MIN + 2,
+                                 -5,
+                                 -4,
+                                 -3,
+                                 -2,
+                                 -1,
+                                 0,
+                                 1,
+                                 2,
+                                 3,
+                                 4,
+                                 5,
+                                 FLT_MAX - 5,
+                                 FLT_MAX - 4,
+                                 FLT_MAX - 3,
+                                 FLT_MAX - 2,
+                                 FLT_MAX - 1,
+                                 FLT_MAX,
+                                 static_cast<float>(M_PI),
+                                 static_cast<float>(M_E),
+                                 -static_cast<float>(M_PI),
+                                 -static_cast<float>(M_E),
+                                 6.62310e23f};
+    uint8_t buffer[4];
+    float f;
+
+    for (const auto &num : floats)
+    {
+        encode_float(buffer, num);
+        decode_float(buffer, f);
+        ASSERT_EQ(f, num);
+    }
+}
+
+TEST(RealNumberTests, DoublePackingAndUnpacking)
+{
+    // clang-format off
+    std::vector<double> doubles = {DBL_MIN, DBL_MIN + 1, DBL_MIN + 2, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5,
+        DBL_MAX - 5, DBL_MAX - 4, DBL_MAX - 3, DBL_MAX - 2, DBL_MAX - 1, DBL_MAX,
+        -DBL_MIN, -DBL_MAX,
+        0.1, 0.001, -0.001, 1.5, -1.5, 100.0, -100.0, 1e10, -1e10,
+        1e-10, -1e-10, 1e-50, -1e-50, 1e300, -1e300, DBL_EPSILON, -DBL_EPSILON,
+        M_PI, -M_PI, M_E, -M_E
+    };
+    // clang-format on
+    uint8_t buffer[8];
+    double f;
+
+    for (const auto &num : doubles)
+    {
+        encode_double(buffer, num);
+        decode_double(buffer, f);
+        ASSERT_EQ(f, num);
+    }
 }
 
 int main(int argc, char *argv[])

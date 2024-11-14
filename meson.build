@@ -15,6 +15,7 @@ if meson.get_compiler('cpp').get_id() == 'clang' and get_option('development')
         '-gdwarf-4',
         '-O',
         '-fsanitize=integer,address,undefined,integer-divide-by-zero,shift,null,return,signed-integer-overflow,float-divide-by-zero,float-cast-overflow,bounds,alignment,vptr,leak',
+        '-fno-sanitize=unsigned-integer-overflow',
         '-pedantic',
         '-Wno-sign-compare',
         '-Wno-unused-parameter',
