@@ -3,6 +3,8 @@
 #include <math.h>
 #include <vector>
 
+using namespace serialization;
+
 TEST(EncodingOfIntegers, SingleByte)
 {
     uint8_t buffer[16] = {0};
@@ -317,6 +319,41 @@ TEST(RealNumberTests, DoublePackingAndUnpacking)
         decode_double(buffer, f);
         ASSERT_EQ(f, num);
     }
+}
+
+TEST(MultipleEncodingSameBuffer, Integers)
+{
+    uint8_t a = 253, a1;
+    int8_t b = -126, b1;
+    uint16_t c = 65530, c1;
+    int16_t d = -32763, d1;
+    uint32_t e = 10, e1;
+    int32_t f = -572923, f1;
+    uint64_t g = 1777777798832, g1;
+    int64_t h = -2340978324, h1;
+    uint8_t buffer[sizeof(a) + sizeof(b) + sizeof(c) + sizeof(d) + sizeof(e) + sizeof(f) + sizeof(g) + sizeof(h)];
+
+    encode_le(buffer, a, b, c, d, e, f, g, h);
+    decode_le(buffer, a1, b1, c1, d1, e1, f1, g1, h1);
+    ASSERT_EQ(a, a1);
+    ASSERT_EQ(b, b1);
+    ASSERT_EQ(c, c1);
+    ASSERT_EQ(d, d1);
+    ASSERT_EQ(e, e1);
+    ASSERT_EQ(f, f1);
+    ASSERT_EQ(g, g1);
+    ASSERT_EQ(h, h1);
+
+    encode_be(buffer, a, b, c, d, e, f, g, h);
+    decode_be(buffer, a1, b1, c1, d1, e1, f1, g1, h1);
+    ASSERT_EQ(a, a1);
+    ASSERT_EQ(b, b1);
+    ASSERT_EQ(c, c1);
+    ASSERT_EQ(d, d1);
+    ASSERT_EQ(e, e1);
+    ASSERT_EQ(f, f1);
+    ASSERT_EQ(g, g1);
+    ASSERT_EQ(h, h1);
 }
 
 int main(int argc, char *argv[])

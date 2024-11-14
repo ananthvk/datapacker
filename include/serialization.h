@@ -6,6 +6,10 @@
 #include <string.h>
 #include <type_traits>
 
+namespace serialization
+{
+namespace internal
+{
 template <typename T> struct is_float : std::false_type
 {
 };
@@ -25,17 +29,18 @@ template <> struct is_double<double> : std::true_type
 template <unsigned bits, unsigned expbits> uint64_t pack754(long double f);
 
 template <unsigned bits, unsigned expbits> long double unpack754(uint64_t i);
+} // namespace internal
 
 void encode_float(uint8_t *buffer, float f)
 {
-    uint64_t encoded = pack754<32, 8>(f);
+    uint64_t encoded = internal::pack754<32, 8>(f);
     uint32_t result = static_cast<uint32_t>(encoded & 0xFFFFFFFF);
     memcpy(buffer, &result, sizeof(result));
 }
 
 void encode_double(uint8_t *buffer, double f)
 {
-    uint64_t encoded = pack754<64, 11>(f);
+    uint64_t encoded = internal::pack754<64, 11>(f);
     memcpy(buffer, &encoded, sizeof(encoded));
 }
 
@@ -43,14 +48,14 @@ void decode_float(uint8_t *buffer, float &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(float));
-    f = static_cast<float>(unpack754<32, 8>(i));
+    f = static_cast<float>(internal::unpack754<32, 8>(i));
 }
 
 void decode_double(uint8_t *buffer, double &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(double));
-    f = static_cast<double>(unpack754<64, 11>(i));
+    f = static_cast<double>(internal::unpack754<64, 11>(i));
 }
 
 template <typename T> inline void encode_be(uint8_t *buffer, T value)
@@ -166,7 +171,35 @@ template <typename T> inline void decode_be(uint8_t *buffer, T &value)
     value = static_cast<T>(val);
 }
 
+template <typename T, typename... Args> void encode_le(uint8_t *buffer, T value, Args... args)
+{
+    encode_le(buffer, value);
+    encode_le(buffer + sizeof(T), args...);
+}
+
+template <typename T, typename... Args> void encode_be(uint8_t *buffer, T value, Args... args)
+{
+    encode_be(buffer, value);
+    encode_be(buffer + sizeof(T), args...);
+}
+
+template <typename T, typename... Args> void decode_le(uint8_t *buffer, T &value, Args &...args)
+{
+    decode_le(buffer, value);
+    decode_le(buffer + sizeof(T), args...);
+}
+
+template <typename T, typename... Args> void decode_be(uint8_t *buffer, T &value, Args &...args)
+{
+    decode_be(buffer, value);
+    decode_be(buffer + sizeof(T), args...);
+}
+
 // Code taken from https://beej.us/guide/bgnet/source/examples/ieee754.c
+
+
+namespace internal
+{
 template <unsigned bits, unsigned expbits> inline uint64_t pack754(long double f)
 {
     long double fnorm;
@@ -211,7 +244,8 @@ template <unsigned bits, unsigned expbits> inline uint64_t pack754(long double f
     exp = shift + ((1 << (expbits - 1)) - 1); // shift + bias
 
     // return the final answer
-    return static_cast<uint64_t>((sign << (bits - 1)) | (exp << (bits - expbits - 1)) | significand);
+    return static_cast<uint64_t>((sign << (bits - 1)) | (exp << (bits - expbits - 1)) |
+                                 significand);
 }
 
 template <unsigned bits, unsigned expbits> inline long double unpack754(uint64_t i)
@@ -248,4 +282,6 @@ template <unsigned bits, unsigned expbits> inline long double unpack754(uint64_t
 
     return result;
 }
+} // namespace internal
+} // namespace serialization
 #endif // A_SERIALIZATION_H
