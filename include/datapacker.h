@@ -17,10 +17,20 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <string>
 #include <type_traits>
+#include <utility>
 
 namespace datapacker
 {
+enum class endian
+{
+    little = 0,
+    big = 1
+};
+
+static const endian default_endianness = endian::little;
+
 namespace internal
 {
 template <typename T> struct is_float : std::false_type
@@ -295,7 +305,7 @@ template <typename T> inline int decode_be(uint8_t *buffer, T &value)
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> int encode_le(uint8_t *buffer, T value, Args... args)
+template <typename T, typename... Args> inline int encode_le(uint8_t *buffer, T value, Args... args)
 {
     auto nbytes = encode_le(buffer, value);
     return nbytes + encode_le(buffer + sizeof(T), args...);
@@ -312,7 +322,7 @@ template <typename T, typename... Args> int encode_le(uint8_t *buffer, T value, 
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> int encode_be(uint8_t *buffer, T value, Args... args)
+template <typename T, typename... Args> inline int encode_be(uint8_t *buffer, T value, Args... args)
 {
     auto nbytes = encode_be(buffer, value);
     return nbytes + encode_be(buffer + sizeof(T), args...);
@@ -330,7 +340,8 @@ template <typename T, typename... Args> int encode_be(uint8_t *buffer, T value, 
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> int decode_le(uint8_t *buffer, T &value, Args &...args)
+template <typename T, typename... Args>
+inline int decode_le(uint8_t *buffer, T &value, Args &...args)
 {
     auto nbytes = decode_le(buffer, value);
     return nbytes + decode_le(buffer + sizeof(T), args...);
@@ -349,10 +360,115 @@ template <typename T, typename... Args> int decode_le(uint8_t *buffer, T &value,
  * @note `buffer` should be of sufficient length to prevent overflow, i.e. it should be atleast
  * equal to the sum of sizes of the types passed
  */
-template <typename T, typename... Args> int decode_be(uint8_t *buffer, T &value, Args &...args)
+template <typename T, typename... Args>
+inline int decode_be(uint8_t *buffer, T &value, Args &...args)
 {
     auto nbytes = decode_be(buffer, value);
     return nbytes + decode_be(buffer + sizeof(T), args...);
+}
+
+template <typename T, endian endianness> inline int encode(uint8_t *buffer, T value)
+{
+
+    if constexpr (std::is_integral<T>::value)
+    {
+        if constexpr (endianness == endian::little)
+            return encode_le(buffer, value);
+        else
+            return encode_be(buffer, value);
+    }
+    else if constexpr (internal::is_float<T>::value)
+    {
+        return encode_float(buffer, value);
+    }
+    else if constexpr (internal::is_double<T>::value)
+    {
+        return encode_double(buffer, value);
+    }
+    else
+    {
+        static_assert(false, "Invalid type passed to encode, only"
+                             "integers and real numbers supported");
+    }
+}
+
+template <typename T, endian endianness> inline int decode(uint8_t *buffer, T &value)
+{
+    if constexpr (std::is_integral<T>::value)
+    {
+        if constexpr (endianness == endian::little)
+            return decode_le(buffer, value);
+        else
+            return decode_be(buffer, value);
+    }
+    else if constexpr (internal::is_float<T>::value)
+    {
+        return decode_float(buffer, value);
+    }
+    else if constexpr (internal::is_double<T>::value)
+    {
+        return decode_double(buffer, value);
+    }
+    else
+    {
+        static_assert(false, "Invalid type passed to decode, only"
+                             "integers and real numbers supported");
+    }
+}
+
+template <typename T, typename U, endian endianness = default_endianness>
+inline int encode_array_length_prefixed(uint8_t *buffer, T *arr, U n)
+{
+    encode<U, endianness>(buffer, n);
+
+    buffer += sizeof(U);
+
+    for (U i = 0; i < n; ++i)
+    {
+        encode<T, endianness>(buffer, arr[i]);
+        buffer += sizeof(T);
+    }
+    return sizeof(U) + static_cast<int>(n * sizeof(T));
+}
+
+template <typename T, typename U, endian endianness = default_endianness>
+inline int decode_array_length_prefixed(uint8_t *buffer, T *arr, U max_arr_length)
+{
+    U arr_length;
+    decode<U, endianness>(buffer, arr_length);
+
+    if (arr_length > max_arr_length)
+    {
+        return -1;
+    }
+
+    buffer += sizeof(U);
+
+    for (U i = 0; i < arr_length; ++i)
+    {
+        decode<T, endianness>(buffer, arr[i]);
+        buffer += sizeof(T);
+    }
+    return sizeof(U) + static_cast<int>(arr_length * sizeof(T));
+}
+
+inline int encode_string_length_prefixed(uint8_t *buffer, const std::string &s)
+{
+    return encode_array_length_prefixed(buffer, s.data(), s.size());
+}
+
+inline int decode_string_length_prefixed(uint8_t *buffer, std::string &s, size_t max_string_length)
+{
+    std::string str;
+    str.resize(max_string_length);
+    auto bytes_read = decode_array_length_prefixed(buffer, str.data(), max_string_length);
+    if (bytes_read == -1)
+    {
+        return -1;
+    }
+    str.resize(bytes_read - sizeof(std::string::size_type));
+    s = std::move(str);
+    return bytes_read;
 }
 
 namespace internal

@@ -331,7 +331,8 @@ TEST(MultipleEncodingSameBuffer, Integers)
     int32_t f = -572923, f1;
     uint64_t g = 1777777798832, g1;
     int64_t h = -2340978324, h1;
-    uint8_t buffer[sizeof(a) + sizeof(b) + sizeof(c) + sizeof(d) + sizeof(e) + sizeof(f) + sizeof(g) + sizeof(h)];
+    uint8_t buffer[sizeof(a) + sizeof(b) + sizeof(c) + sizeof(d) + sizeof(e) + sizeof(f) +
+                   sizeof(g) + sizeof(h)];
 
     ASSERT_EQ(encode_le(buffer, a, b, c, d, e, f, g, h), 30);
     ASSERT_EQ(decode_le(buffer, a1, b1, c1, d1, e1, f1, g1, h1), 30);
@@ -354,6 +355,74 @@ TEST(MultipleEncodingSameBuffer, Integers)
     ASSERT_EQ(f, f1);
     ASSERT_EQ(g, g1);
     ASSERT_EQ(h, h1);
+}
+
+#include <string>
+
+TEST(ArrayEncoding, LengthPrefixedInts)
+{
+    std::vector<int> a = {3, -1, 2, 0, 6441, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 2};
+    std::vector<int> a1(a.size());
+    auto bytes_required = a.size() * sizeof(int) + sizeof(std::vector<int>::size_type);
+    std::vector<uint8_t> buffer(bytes_required);
+
+    ASSERT_EQ(encode_array_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 0), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 1), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 4), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(a, a1);
+}
+
+TEST(ArrayEncoding, LengthPrefixedDoubles)
+{
+    std::vector<double> a = {-1.,       0.,      3.1415,  DBL_MIN, DBL_MAX, -8.383242342,
+                             777382e10, 5.64123, 8.83e21, 7e10,    -5e-5,   1e100};
+    std::vector<double> a1(a.size());
+    auto bytes_required = a.size() * sizeof(double) + sizeof(std::vector<double>::size_type);
+    std::vector<uint8_t> buffer(bytes_required);
+
+    ASSERT_EQ(encode_array_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 0), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 1), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 4), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(a, a1);
+}
+
+TEST(ArrayEncoding, LengthPrefixedChars)
+{
+    std::vector<char> a = {'h', 'e', 'l', 'l', 'o', ' ', 'w', 'o', 'r', 'l', 'd', '!'};
+    std::vector<char> a1(a.size());
+    auto bytes_required = a.size() * sizeof(char) + sizeof(std::vector<char>::size_type);
+    std::vector<uint8_t> buffer(bytes_required);
+
+    ASSERT_EQ(encode_array_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 0), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 1), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 4), -1);
+    ASSERT_EQ(decode_array_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(a, a1);
+}
+
+TEST(StringEncoding, LengthPrefixed)
+{
+    std::string s = "The quick brown fox jumps over the lazy dogs";
+    std::vector<uint8_t> buffer(8 + s.size());
+    ASSERT_EQ(encode_string_length_prefixed(buffer.data(), s), s.size() + 8);
+    std::string s2;
+    ASSERT_EQ(decode_string_length_prefixed(buffer.data(), s2, s.size()), s.size() + 8);
+    ASSERT_EQ(s, s2);
+
+    s2.clear();
+    ASSERT_EQ(decode_string_length_prefixed(buffer.data(), s2, s.size() * 2), s.size() + 8);
+    ASSERT_EQ(s, s2);
+
+    s2.clear();
+    ASSERT_EQ(decode_string_length_prefixed(buffer.data(), s2, s.size() - 5), -1);
 }
 
 int main(int argc, char *argv[])
