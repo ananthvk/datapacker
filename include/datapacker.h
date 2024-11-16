@@ -388,7 +388,7 @@ inline int decode_be(uint8_t *buffer, T &value, Args &...args)
  *
  * @note buffer should be of sufficient length to hold the encoded value
  */
-template <typename T, endian endianness> inline int encode(uint8_t *buffer, T value)
+template <endian endianness, typename T> inline int encode(uint8_t *buffer, T value)
 {
 
     if constexpr (std::is_integral<T>::value)
@@ -425,7 +425,7 @@ template <typename T, endian endianness> inline int encode(uint8_t *buffer, T va
  *
  * @note buffer should be of sufficient length
  */
-template <typename T, endian endianness> inline int decode(uint8_t *buffer, T &value)
+template <endian endianness, typename T> inline int decode(uint8_t *buffer, T &value)
 {
     if constexpr (std::is_integral<T>::value)
     {
@@ -449,6 +449,20 @@ template <typename T, endian endianness> inline int decode(uint8_t *buffer, T &v
     }
 }
 
+template <endian endianness, typename T, typename... Args>
+inline int encode(uint8_t *buffer, T value, Args... args)
+{
+    auto nbytes = encode<endianness, T>(buffer, value);
+    return nbytes + encode<endianness>(buffer + sizeof(T), args...);
+}
+
+template <endian endianness, typename T, typename... Args>
+inline int decode(uint8_t *buffer, T &value, Args &...args)
+{
+    auto nbytes = decode<endianness, T>(buffer, value);
+    return nbytes + decode<endianness>(buffer + sizeof(T), args...);
+}
+
 /**
  * @brief Encodes an array with a length prefix into a buffer.
  *
@@ -464,13 +478,13 @@ template <typename T, endian endianness> inline int decode(uint8_t *buffer, T &v
 template <typename T, typename U, endian endianness = default_endianness>
 inline int encode_length_prefixed(uint8_t *buffer, T *arr, U n)
 {
-    encode<U, endianness>(buffer, n);
+    encode<endianness, U>(buffer, n);
 
     buffer += sizeof(U);
 
     for (U i = 0; i < n; ++i)
     {
-        encode<T, endianness>(buffer, arr[i]);
+        encode<endianness, T>(buffer, arr[i]);
         buffer += sizeof(T);
     }
     return sizeof(U) + static_cast<int>(n * sizeof(T));
@@ -491,7 +505,7 @@ template <typename T, typename U, endian endianness = default_endianness>
 inline int decode_length_prefixed(uint8_t *buffer, T *arr, U max_arr_length)
 {
     U arr_length;
-    decode<U, endianness>(buffer, arr_length);
+    decode<endianness, U>(buffer, arr_length);
 
     if (arr_length > max_arr_length)
     {
@@ -502,7 +516,7 @@ inline int decode_length_prefixed(uint8_t *buffer, T *arr, U max_arr_length)
 
     for (U i = 0; i < arr_length; ++i)
     {
-        decode<T, endianness>(buffer, arr[i]);
+        decode<endianness, T>(buffer, arr[i]);
         buffer += sizeof(T);
     }
     return sizeof(U) + static_cast<int>(arr_length * sizeof(T));

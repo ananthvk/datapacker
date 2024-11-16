@@ -60,8 +60,8 @@ int main()
                                 data.samples.size() * sizeof(float) + sizeof(data.timestamp));
     uint8_t *buffer_ptr = buffer.data();
 
-    auto n =
-        datapacker::encode_le(buffer_ptr, data.experiment_code, data.location_id, data.timestamp);
+    auto n = datapacker::encode<datapacker::endian::little>(buffer_ptr, data.experiment_code,
+                                                            data.location_id, data.timestamp);
 
     buffer_ptr += n;
 
@@ -76,8 +76,8 @@ int main()
     ExperimentData data2;
     buffer_ptr = buffer.data();
 
-    n = datapacker::decode_le(buffer_ptr, data2.experiment_code, data2.location_id,
-                              data2.timestamp);
+    n = datapacker::decode<datapacker::endian::little>(buffer_ptr, data2.experiment_code,
+                                                       data2.location_id, data2.timestamp);
     buffer_ptr += n;
 
     // Limit max number of elements to 1000
