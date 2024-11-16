@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+using namespace datapacker;
+using namespace datapacker::stream;
+
 // A sample struct, to demonstrate packing and unpacking
 struct ExperimentData
 {
@@ -50,6 +53,7 @@ std::ostream &print_binary_data(std::ostream &os, std::vector<uint8_t> &bytes)
 
 int main()
 {
+
     ExperimentData data;
     data.experiment_code = 'u';
     data.location_id = 1376;
@@ -57,58 +61,32 @@ int main()
     data.experiment_name = "This is a super important experiment!";
     data.samples = {1.15f, -1.32f, 0.1f, 5.614f, 3.1415, 6.623e23, 9e10 - 9, 1.45f, 1.3213e21f};
 
-    std::vector<uint8_t> buffer(sizeof(data.experiment_code) + sizeof(data.location_id) +
-                                sizeof(size_t) + data.experiment_name.size() + sizeof(size_t) +
-                                data.samples.size() * sizeof(float) + sizeof(data.timestamp));
-    uint8_t *buffer_ptr = buffer.data();
+    std::ostringstream ss;
+    write<endian::little>(ss, data.experiment_code);
+    write<endian::little>(ss, data.location_id);
+    write<endian::little>(ss, data.timestamp);
+    write<endian::little>(ss, data.experiment_name);
+    write<endian::little>(ss, data.samples);
 
-    auto n = datapacker::bytes::encode<datapacker::endian::little>(
-        buffer_ptr, data.experiment_code, data.location_id, data.timestamp);
-
-    buffer_ptr += n;
-
-    n = datapacker::bytes::encode_length_prefixed(buffer_ptr, data.experiment_name);
-    buffer_ptr += n;
-
-    n = datapacker::bytes::encode_length_prefixed(buffer_ptr, data.samples);
-
-    print_binary_data(std::cout, buffer);
+    std::string str = ss.str();
+    std::vector<uint8_t> bytes_vec(str.begin(), str.end());
+    print_binary_data(std::cout, bytes_vec);
 
     // Decode the data from the buffer
     ExperimentData data2;
-    buffer_ptr = buffer.data();
-
-    n = datapacker::bytes::decode<datapacker::endian::little>(buffer_ptr, data2.experiment_code,
-                                                              data2.location_id, data2.timestamp);
+    auto buffer_ptr = bytes_vec.data();
+    auto n = datapacker::bytes::decode<datapacker::endian::little>(
+        buffer_ptr, data2.experiment_code, data2.location_id, data2.timestamp);
     buffer_ptr += n;
-
     // Limit max number of elements to 1000
-    n = datapacker::bytes::decode_length_prefixed(buffer_ptr, data2.experiment_name, 1000);
+    n = datapacker::bytes::decode_length_prefixed<datapacker::endian::little>(
+        buffer_ptr, data2.experiment_name, 1000);
     buffer_ptr += n;
-
-    n = datapacker::bytes::decode_length_prefixed(buffer_ptr, data2.samples, 1000);
-
+    n = datapacker::bytes::decode_length_prefixed<datapacker::endian::little>(buffer_ptr,
+                                                                              data2.samples, 1000);
     std::cout << "Original data: " << std::endl;
     data.print();
     std::cout << "=================================================" << std::endl;
     std::cout << "Unpacked data: " << std::endl;
     data2.print();
-
-    std::vector<float> f = {3.1415f, -10e10f, 1.813f, -0.135f, 3.1415f};
-
-    using namespace datapacker;
-    using namespace datapacker::stream;
-
-    std::ostringstream ss;
-    write<endian::little>(ss, 312);
-    write<endian::little>(ss, 3.1415f);
-    write<endian::little>(ss, 'a');
-    write<endian::little>(ss, "hello world this is a message!");
-    write<endian::little>(ss, 1);
-    write<endian::little>(ss, 1);
-    write<endian::little>(ss, f);
-
-    std::string str = ss.str();
-    std::vector<uint8_t> bytes_vec(str.begin(), str.end());
-    print_binary_data(std::cout, bytes_vec);
 }

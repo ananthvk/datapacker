@@ -4,6 +4,8 @@
 #include <vector>
 
 using namespace datapacker::bytes;
+#define encode_length_prefixed datapacker::bytes::encode_length_prefixed<datapacker::endian::big>
+#define decode_length_prefixed datapacker::bytes::decode_length_prefixed<datapacker::endian::big>
 
 TEST(EncodingOfIntegers, SingleByte)
 {
@@ -368,10 +370,10 @@ TEST(ArrayEncoding, LengthPrefixedInts)
 
     ASSERT_EQ(encode_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
     ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 0), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 0LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8LL), -1);
     ASSERT_EQ(a, a1);
 }
 
@@ -385,10 +387,10 @@ TEST(ArrayEncoding, LengthPrefixedDoubles)
 
     ASSERT_EQ(encode_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
     ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 0), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 0LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8LL), -1);
     ASSERT_EQ(a, a1);
 }
 
@@ -401,10 +403,9 @@ TEST(ArrayEncoding, LengthPrefixedChars)
 
     ASSERT_EQ(encode_length_prefixed(buffer.data(), a.data(), a.size()), bytes_required);
     ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), a1.size()), bytes_required);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 0), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4), -1);
-    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 1LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 4LL), -1);
+    ASSERT_EQ(decode_length_prefixed(buffer.data(), a1.data(), 8LL), -1);
     ASSERT_EQ(a, a1);
 }
 

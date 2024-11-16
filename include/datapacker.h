@@ -32,8 +32,6 @@ enum class endian
     big = 1
 };
 
-static const endian default_endianness = endian::little;
-
 namespace internal
 {
 template <typename T> struct is_float : std::false_type
@@ -431,9 +429,9 @@ template <endian endianness, typename T> inline int encode(uint8_t *buffer, T va
 /**
  * @brief Decodes a value into a buffer with specified endianness (for integral types).
  *
- * @tparam T The type of the value to decode to. Must be an integral, float, or double type.
  * @tparam endianness The endianness to use for decoding. Must be either endian::little or
  * endian::big.
+ * @tparam T The type of the value to decode to. Must be an integral, float, or double type.
  * @param buffer The buffer to decode the value from.
  * @param value Where to decoded value will be stored
  * @return int The number of bytes read from the buffer.
@@ -481,16 +479,16 @@ inline int decode(uint8_t *buffer, T &value, Args &...args)
 /**
  * @brief Encodes an array with a length prefix into a buffer.
  *
+ * @tparam endianness The endianness to use for encoding
  * @tparam T The type of the elements in the array.
  * @tparam U The type used to encode the length of the array.
- * @tparam endianness The endianness to use for encoding. Defaults to default_endianness.
  * @param buffer The buffer where the encoded data will be stored.
  * @param arr The array of elements to encode.
  * @param n The number of elements in the array.
  * @return The total number of bytes written to the buffer.
  * @note buffer should be of size atleast equal to `sizeof(U) + sizeof(T) * n`
  */
-template <typename T, typename U, endian endianness = default_endianness>
+template <endian endianness, typename T, typename U>
 inline int encode_length_prefixed(uint8_t *buffer, T *arr, U n)
 {
     encode<endianness, U>(buffer, n);
@@ -507,16 +505,17 @@ inline int encode_length_prefixed(uint8_t *buffer, T *arr, U n)
 
 /**
  * @brief Decodes a length-prefixed array from a buffer.
+ * @tparam endianness The endianness of the data
  * @tparam T The type of the elements in the array.
  * @tparam U The type used for the length prefix.
- * @tparam endianness The endianness of the data (default is `default_endianness`).
  * @param buffer The buffer containing the length-prefixed array to decode.
  * @param arr Pointer to the array where the decoded elements will be stored.
  * @param max_arr_length The maximum length of the array to prevent buffer overflow.
  * @return The total number of bytes read from the buffer, or -1 if the length read exceeds
  * max_arr_length
  */
-template <typename T, typename U, endian endianness = default_endianness>
+
+template <endian endianness, typename T, typename U>
 inline int decode_length_prefixed(uint8_t *buffer, T *arr, U max_arr_length)
 {
     U arr_length;
@@ -539,18 +538,21 @@ inline int decode_length_prefixed(uint8_t *buffer, T *arr, U max_arr_length)
 
 /**
  * @brief Encodes a string as a length prefixed array into a buffer
+ * @tparam endianness Endianness of the length to be written
  * @param buffer The buffer where the encoded string will be stored
  * @param s The string to be encoded
  * @return The number of bytes written to the buffer,
  * @note `buffer` should be of size atleast equal to `sizeof(size_t) + s.size()`
  */
+template <endian endianness>
 inline int encode_length_prefixed(uint8_t *buffer, const std::string &s)
 {
-    return encode_length_prefixed(buffer, s.data(), s.size());
+    return encode_length_prefixed<endianness>(buffer, s.data(), s.size());
 }
 
 /**
  * @brief Decodes a length-prefixed string from a buffer.
+ * @tparam endianness Endianness of the length in the buffer
  * @param buffer The buffer containing the length-prefixed string to decode.
  * @param s Reference to a string into which the decoded value will be stored
  * @param max_string_length The maximum length of the string to prevent buffer overflow.
@@ -558,11 +560,12 @@ inline int encode_length_prefixed(uint8_t *buffer, const std::string &s)
  * max_string_length
  * @note This function creates a new string, then moves it into s, so it is fine if s is empty
  */
+template <endian endianness>
 inline int decode_length_prefixed(uint8_t *buffer, std::string &s, size_t max_string_length)
 {
     std::string str;
     str.resize(max_string_length);
-    auto bytes_read = decode_length_prefixed(buffer, str.data(), max_string_length);
+    auto bytes_read = decode_length_prefixed<endianness>(buffer, str.data(), max_string_length);
     if (bytes_read == -1)
     {
         return -1;
@@ -574,18 +577,21 @@ inline int decode_length_prefixed(uint8_t *buffer, std::string &s, size_t max_st
 
 /**
  * @brief Encodes a vector as a length prefixed array into a buffer
+ * @tparam endianness Endianness of the length in the buffer
  * @tparam T The type of elements of the vector
  * @param buffer The buffer where the encoded vector will be stored
  * @param v The vector to be encoded
  * @return The number of bytes written to the buffer,
  */
-template <typename T> inline int encode_length_prefixed(uint8_t *buffer, const std::vector<T> &v)
+template <endian endianness, typename T>
+inline int encode_length_prefixed(uint8_t *buffer, const std::vector<T> &v)
 {
-    return encode_length_prefixed(buffer, v.data(), v.size());
+    return encode_length_prefixed<endianness>(buffer, v.data(), v.size());
 }
 
 /**
  * @brief Decodes a length-prefixed vector from a buffer.
+ * @tparam endianness Endianness of the length in the buffer
  * @tparam T The type of elements of the vector
  * @param buffer The buffer containing the length-prefixed vector to decode.
  * @param v Reference to a vector into which the decoded value will be stored
@@ -594,12 +600,12 @@ template <typename T> inline int encode_length_prefixed(uint8_t *buffer, const s
  * max_length
  * @note This function creates a new vector, then moves it into v, so it is fine if v is empty
  */
-template <typename T>
+template <endian endianness, typename T>
 inline int decode_length_prefixed(uint8_t *buffer, std::vector<T> &v, size_t max_length)
 {
     std::vector<T> vec;
     vec.resize(max_length);
-    auto bytes_read = decode_length_prefixed(buffer, vec.data(), max_length);
+    auto bytes_read = decode_length_prefixed<endianness>(buffer, vec.data(), max_length);
     if (bytes_read == -1)
     {
         return -1;
@@ -631,14 +637,14 @@ template <endian endianness, typename T> inline std::ostream &write(std::ostream
     {
         size_t str_size = strlen(value);
         buffer.resize(sizeof(size_t) + str_size);
-        bytes::encode_length_prefixed(buffer.data(), value, str_size);
+        bytes::encode_length_prefixed<endianness>(buffer.data(), value, str_size);
     }
     // If T is a vector or a string, also allocate memory of sizeof(size_t) for the length
     else if constexpr (std::is_same<T, std::string>::value ||
                        std::is_same<T, std::vector<typename T::value_type>>::value)
     {
         buffer.resize(sizeof(size_t) + value.size() * sizeof(typename T::value_type));
-        bytes::encode_length_prefixed(buffer.data(), value);
+        bytes::encode_length_prefixed<endianness>(buffer.data(), value);
     }
     else
     {
