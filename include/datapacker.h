@@ -10,10 +10,12 @@
  * @version 1.0
  * @date 2024-11-14
  * @author Ananthanarayanan Venkitakrishnan
+ * Homepage: https://github.com/ananthvk/datapacker
  */
 #ifndef A_DATAPACKER_H
 #define A_DATAPACKER_H
 #include <inttypes.h>
+#include <ostream>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -76,11 +78,18 @@ namespace bytes
  * @return Number of bytes written to the buffer
  * @note `buffer` should have size atleast equal to `sizeof(float)`
  */
+
+template <typename T> int encode_le(uint8_t *buffer, T value);
+
+template <typename T> int decode_le(uint8_t *buffer, T &value);
+
+// Note: floats and doubles, when converted to int64_t are encoded in little endian format
+
 inline int encode_float(uint8_t *buffer, float f)
 {
     uint64_t encoded = internal::pack754<32, 8>(f);
     uint32_t result = static_cast<uint32_t>(encoded & 0xFFFFFFFF);
-    memcpy(buffer, &result, sizeof(result));
+    encode_le(buffer, result);
     return sizeof(float);
 }
 
@@ -94,7 +103,7 @@ inline int encode_float(uint8_t *buffer, float f)
 inline int encode_double(uint8_t *buffer, double f)
 {
     uint64_t encoded = internal::pack754<64, 11>(f);
-    memcpy(buffer, &encoded, sizeof(encoded));
+    encode_le(buffer, encoded);
     return sizeof(double);
 }
 
@@ -107,9 +116,9 @@ inline int encode_double(uint8_t *buffer, double f)
  */
 inline int decode_float(uint8_t *buffer, float &f)
 {
-    uint64_t i;
-    memcpy(&i, buffer, sizeof(float));
-    f = static_cast<float>(internal::unpack754<32, 8>(i));
+    uint32_t i;
+    decode_le(buffer, i);
+    f = static_cast<float>(internal::unpack754<32, 8>(static_cast<uint64_t>(i)));
     return sizeof(float);
 }
 
@@ -123,7 +132,7 @@ inline int decode_float(uint8_t *buffer, float &f)
 inline int decode_double(uint8_t *buffer, double &f)
 {
     uint64_t i;
-    memcpy(&i, buffer, sizeof(double));
+    decode_le(buffer, i);
     f = static_cast<double>(internal::unpack754<64, 11>(i));
     return sizeof(double);
 }
@@ -601,9 +610,56 @@ inline int decode_length_prefixed(uint8_t *buffer, std::vector<T> &v, size_t max
 }
 } // namespace bytes
 
+/**
+ * Functions in this namespace operate over streams - `istream` and `ostream`. They do not require
+ * manual management of buffers
+ */
+namespace stream
+{
+
+template <endian endianness, typename T> inline std::ostream &write(std::ostream &os, T value)
+{
+    std::vector<uint8_t> buffer;
+    // Allocate a buffer of necessary size
+    if constexpr (std::is_integral<T>::value || std::is_floating_point<T>::value)
+    {
+        buffer.resize(sizeof(T));
+        bytes::encode<endianness>(buffer.data(), value);
+    }
+    // If T is a const string literal
+    else if constexpr (std::is_same<T, const char *>::value)
+    {
+        size_t str_size = strlen(value);
+        buffer.resize(sizeof(size_t) + str_size);
+        bytes::encode_length_prefixed(buffer.data(), value, str_size);
+    }
+    // If T is a vector or a string, also allocate memory of sizeof(size_t) for the length
+    else if constexpr (std::is_same<T, std::string>::value ||
+                       std::is_same<T, std::vector<typename T::value_type>>::value)
+    {
+        buffer.resize(sizeof(size_t) + value.size() * sizeof(typename T::value_type));
+        bytes::encode_length_prefixed(buffer.data(), value);
+    }
+    else
+    {
+        static_assert(false, "Invalid type passed to write, can only encode integers, real "
+                             "numbers, vectors, and strings");
+    }
+    return os.write(reinterpret_cast<const char *>(buffer.data()), buffer.size());
+}
+
+template <endian endianness, typename T> inline std::istream &read(std::istream &is, T &value)
+{
+    return is;
+}
+
+
+} // namespace stream
+
 namespace internal
 {
 // Code taken from https://beej.us/guide/bgnet/source/examples/ieee754.c
+// Does not support NaN and infinity
 
 /**
  * This function packs a double as an unsigned 64 bit integer, which can be written to a buffer

@@ -1,6 +1,8 @@
 #include "../include/datapacker.h"
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -60,8 +62,8 @@ int main()
                                 data.samples.size() * sizeof(float) + sizeof(data.timestamp));
     uint8_t *buffer_ptr = buffer.data();
 
-    auto n = datapacker::bytes::encode<datapacker::endian::little>(buffer_ptr, data.experiment_code,
-                                                            data.location_id, data.timestamp);
+    auto n = datapacker::bytes::encode<datapacker::endian::little>(
+        buffer_ptr, data.experiment_code, data.location_id, data.timestamp);
 
     buffer_ptr += n;
 
@@ -77,7 +79,7 @@ int main()
     buffer_ptr = buffer.data();
 
     n = datapacker::bytes::decode<datapacker::endian::little>(buffer_ptr, data2.experiment_code,
-                                                       data2.location_id, data2.timestamp);
+                                                              data2.location_id, data2.timestamp);
     buffer_ptr += n;
 
     // Limit max number of elements to 1000
@@ -91,4 +93,22 @@ int main()
     std::cout << "=================================================" << std::endl;
     std::cout << "Unpacked data: " << std::endl;
     data2.print();
+
+    std::vector<float> f = {3.1415f, -10e10f, 1.813f, -0.135f, 3.1415f};
+
+    using namespace datapacker;
+    using namespace datapacker::stream;
+
+    std::ostringstream ss;
+    write<endian::little>(ss, 312);
+    write<endian::little>(ss, 3.1415f);
+    write<endian::little>(ss, 'a');
+    write<endian::little>(ss, "hello world this is a message!");
+    write<endian::little>(ss, 1);
+    write<endian::little>(ss, 1);
+    write<endian::little>(ss, f);
+
+    std::string str = ss.str();
+    std::vector<uint8_t> bytes_vec(str.begin(), str.end());
+    print_binary_data(std::cout, bytes_vec);
 }
