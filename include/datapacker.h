@@ -76,7 +76,7 @@ namespace bytes
  * @return Number of bytes written to the buffer
  * @note `buffer` should have size atleast equal to `sizeof(float)`
  */
-int encode_float(uint8_t *buffer, float f)
+inline int encode_float(uint8_t *buffer, float f)
 {
     uint64_t encoded = internal::pack754<32, 8>(f);
     uint32_t result = static_cast<uint32_t>(encoded & 0xFFFFFFFF);
@@ -91,7 +91,7 @@ int encode_float(uint8_t *buffer, float f)
  * @return Number of bytes written to the buffer
  * @note `buffer` should have size atleast equal to `sizeof(double)`
  */
-int encode_double(uint8_t *buffer, double f)
+inline int encode_double(uint8_t *buffer, double f)
 {
     uint64_t encoded = internal::pack754<64, 11>(f);
     memcpy(buffer, &encoded, sizeof(encoded));
@@ -105,7 +105,7 @@ int encode_double(uint8_t *buffer, double f)
  * @return Number of bytes read from the buffer
  * @note `buffer` should have size atleast equal to `sizeof(float)`
  */
-int decode_float(uint8_t *buffer, float &f)
+inline int decode_float(uint8_t *buffer, float &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(float));
@@ -120,7 +120,7 @@ int decode_float(uint8_t *buffer, float &f)
  * @return Number of bytes read from the buffer
  * @note `buffer` should have size atleast equal to `sizeof(double)`
  */
-int decode_double(uint8_t *buffer, double &f)
+inline int decode_double(uint8_t *buffer, double &f)
 {
     uint64_t i;
     memcpy(&i, buffer, sizeof(double));
