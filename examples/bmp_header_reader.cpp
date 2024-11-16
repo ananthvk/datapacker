@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     uint32_t palette_colors;
     uint32_t imp_colors;
 
-    datapacker::decode_le(bufptr, size, reserved, starting_offset, dib_header_size, width,
+    datapacker::bytes::decode_le(bufptr, size, reserved, starting_offset, dib_header_size, width,
                              height, color_planes, bpp, compression, image_size,
                              horizontal_resolution, vertical_resolution, palette_colors,
                              imp_colors);

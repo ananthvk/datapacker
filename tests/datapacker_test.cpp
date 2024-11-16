@@ -3,7 +3,7 @@
 #include <math.h>
 #include <vector>
 
-using namespace datapacker;
+using namespace datapacker::bytes;
 
 TEST(EncodingOfIntegers, SingleByte)
 {

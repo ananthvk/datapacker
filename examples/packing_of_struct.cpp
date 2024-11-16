@@ -60,15 +60,15 @@ int main()
                                 data.samples.size() * sizeof(float) + sizeof(data.timestamp));
     uint8_t *buffer_ptr = buffer.data();
 
-    auto n = datapacker::encode<datapacker::endian::little>(buffer_ptr, data.experiment_code,
+    auto n = datapacker::bytes::encode<datapacker::endian::little>(buffer_ptr, data.experiment_code,
                                                             data.location_id, data.timestamp);
 
     buffer_ptr += n;
 
-    n = datapacker::encode_length_prefixed(buffer_ptr, data.experiment_name);
+    n = datapacker::bytes::encode_length_prefixed(buffer_ptr, data.experiment_name);
     buffer_ptr += n;
 
-    n = datapacker::encode_length_prefixed(buffer_ptr, data.samples);
+    n = datapacker::bytes::encode_length_prefixed(buffer_ptr, data.samples);
 
     print_binary_data(std::cout, buffer);
 
@@ -76,15 +76,15 @@ int main()
     ExperimentData data2;
     buffer_ptr = buffer.data();
 
-    n = datapacker::decode<datapacker::endian::little>(buffer_ptr, data2.experiment_code,
+    n = datapacker::bytes::decode<datapacker::endian::little>(buffer_ptr, data2.experiment_code,
                                                        data2.location_id, data2.timestamp);
     buffer_ptr += n;
 
     // Limit max number of elements to 1000
-    n = datapacker::decode_length_prefixed(buffer_ptr, data2.experiment_name, 1000);
+    n = datapacker::bytes::decode_length_prefixed(buffer_ptr, data2.experiment_name, 1000);
     buffer_ptr += n;
 
-    n = datapacker::decode_length_prefixed(buffer_ptr, data2.samples, 1000);
+    n = datapacker::bytes::decode_length_prefixed(buffer_ptr, data2.samples, 1000);
 
     std::cout << "Original data: " << std::endl;
     data.print();

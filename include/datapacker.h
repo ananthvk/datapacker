@@ -64,6 +64,12 @@ template <unsigned bits, unsigned expbits> long double unpack754(uint64_t i);
 } // namespace internal
 
 /**
+ * All the functions in this namespace operate on raw bytes, and it is necessary that the caller
+ * makes sure that the buffers are of sufficient length to prevent overflow
+ */
+namespace bytes
+{
+/**
  * @brief Encodes a float in IEEE754 format and stores it in `buffer`
  * @param buffer Pointer to buffer which will be used to store the encoded data
  * @param value Value to be encoded
@@ -593,6 +599,7 @@ inline int decode_length_prefixed(uint8_t *buffer, std::vector<T> &v, size_t max
     v = std::move(vec);
     return bytes_read;
 }
+} // namespace bytes
 
 namespace internal
 {
