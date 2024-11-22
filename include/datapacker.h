@@ -15,6 +15,7 @@
 #ifndef A_DATAPACKER_H
 #define A_DATAPACKER_H
 #include <inttypes.h>
+#include <istream>
 #include <ostream>
 #include <stddef.h>
 #include <stdint.h>
@@ -26,6 +27,8 @@
 
 namespace datapacker
 {
+// Default maximum number of elements which can be read using the stream api
+constexpr size_t DEFAULT_MAX_NUMBER_OF_ELEMENTS = 1000 * 1000;
 enum class endian
 {
     little = 0,
@@ -34,6 +37,10 @@ enum class endian
 
 namespace internal
 {
+template <class...> struct False : std::bool_constant<false>
+{
+};
+
 template <typename T> struct is_float : std::false_type
 {
 };
@@ -421,8 +428,8 @@ template <endian endianness, typename T> inline int encode(uint8_t *buffer, T va
     }
     else
     {
-        static_assert(false, "Invalid type passed to encode, only"
-                             "integers and real numbers supported");
+        static_assert(internal::False<T>{}, "Invalid type passed to encode, only"
+                                            "integers and real numbers supported");
     }
 }
 
@@ -457,8 +464,8 @@ template <endian endianness, typename T> inline int decode(uint8_t *buffer, T &v
     }
     else
     {
-        static_assert(false, "Invalid type passed to decode, only"
-                             "integers and real numbers supported");
+        static_assert(internal::False<T>{}, "Invalid type passed to decode, only"
+                                            "integers and real numbers supported");
     }
 }
 
@@ -648,14 +655,59 @@ template <endian endianness, typename T> inline std::ostream &write(std::ostream
     }
     else
     {
-        static_assert(false, "Invalid type passed to write, can only encode integers, real "
-                             "numbers, vectors, and strings");
+        static_assert(internal::False<T>{},
+                      "Invalid type passed to write, can only encode integers, real "
+                      "numbers, vectors, and strings");
     }
     return os.write(reinterpret_cast<const char *>(buffer.data()), buffer.size());
 }
 
-template <endian endianness, typename T> inline std::istream &read(std::istream &is, T &value)
+template <endian endianness, typename T>
+inline std::istream &read(std::istream &is, T &value,
+                          size_t max_elements = DEFAULT_MAX_NUMBER_OF_ELEMENTS)
 {
+    std::vector<uint8_t> buffer;
+    // Allocate a buffer of necessary size
+    if constexpr (std::is_integral<T>::value || std::is_floating_point<T>::value)
+    {
+        buffer.resize(sizeof(T));
+        is.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
+        if (!is)
+            return is;
+        bytes::decode<endianness>(buffer.data(), value);
+    }
+    // If T is a vector or a string, also allocate memory of sizeof(size_t) for the length
+    else if constexpr (std::is_same<T, std::string>::value ||
+                       std::is_same<T, std::vector<typename T::value_type>>::value)
+    {
+        buffer.resize(sizeof(size_t));
+        is.read(reinterpret_cast<char *>(buffer.data()), buffer.size());
+        if (!is)
+            return is;
+        size_t sz = 0;
+        if (bytes::decode<endianness>(buffer.data(), sz) != sizeof(size_t))
+        {
+            // Throw error
+            throw std::runtime_error("Sequence size could not be determined");
+        }
+        if (sz > max_elements)
+        {
+            throw std::runtime_error("Data contains more elements than max_elements, read failed");
+        }
+        buffer.resize(sz * sizeof(typename T::value_type) + sizeof(size_t));
+        is.read(reinterpret_cast<char *>(buffer.data() + sizeof(size_t)),
+                buffer.size() - sizeof(size_t));
+        if (!is)
+            return is;
+
+        bytes::decode_length_prefixed<endianness>(buffer.data(), value, max_elements);
+    }
+    else
+    {
+        static_assert(internal::False<T>{},
+                      "Invalid type passed to read, can only decode integers, real "
+                      "numbers, vectors, and strings");
+    }
     return is;
 }
 
